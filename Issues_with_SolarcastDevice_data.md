@@ -18,4 +18,4 @@ Link to downloaded Solarcast Data: https://drive.google.com/drive/folders/13tPy3
 4. When `when_captured` is 0, then it should be discarded.
 5. Whereever you see NaNs in the dataset, they are actually missing values in csv. So that's how they should be treated. NaNs are an import artefact
 6. PM of 0.0 does not mean invalid or erroneous reading. It just means very clean air. 
-7. There are those data files that have duplicate records when (`device_urn`, `when_captured`) is used as the key. Be sure to filter duplicate records from data
+7. There are those data files that have duplicate records when (`device_urn`, `when_captured`) is used as the key. Be sure to filter duplicate records from datav
