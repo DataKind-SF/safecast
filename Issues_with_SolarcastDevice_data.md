@@ -2,7 +2,8 @@ Data is retreived from Script written by Mat Schaffer here:  https://github.com/
 
 Link to downloaded Solarcast Data: https://drive.google.com/drive/folders/13tPy3ZxMDfLYYJkplxY6AH76TJ4zGOEz
 
-# Known Issues with data
+# Known Issues with data (Updated 07/18/2020)
+
 1. RH (`env_humid`) : humidity sensors have bugs, there are values <0 and >100. Replace these values by NaNs
 2. Devices have more than one reading per time stamp -- why? Here's the data logging process (From Ray Ozzie at Safecast). Point (F) might explain the issue with using `service_uploaded` field -- but issue persists with `when_captured` field also
     1. the device takes a measurement of N sensors (its air sensors, its Geigers, etc) at time == T1.  It packages the captured time and sensor measure,ents into 1 composite JSON object stamped with T1 as “captured time”.
