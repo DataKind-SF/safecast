@@ -1,4 +1,5 @@
 Data is retreived from Script written by Mat Schaffer here:  https://github.com/Safecast/ingest/pull/95
+
 Link to downloaded Solarcast Data: https://drive.google.com/drive/folders/13tPy3ZxMDfLYYJkplxY6AH76TJ4zGOEz
 
 # Known Issues with data
