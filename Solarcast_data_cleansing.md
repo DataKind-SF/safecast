@@ -1,5 +1,6 @@
 # Solarcast Data Cleansing Protocol (Updated 07/20/20)
 
+Points of contact : Ray Ozzie (backend dev with sensors) and Mat Schaffer (data engineer)
 1. For records where env_humid < 0 or env_humid >100 -- flag them as "Invalid Relative Humidity" (and I will replace those values with NaNs on my end)
 2. For records where when_captured or service_uploaded is datetime(0,0,0) -- flag them as "invalid time stamp"
 3. For records where when_captured == service_uploaded - "invalid log Type 1 "
