@@ -8,3 +8,5 @@ Repo for DKSF Project with Safecast
 **Data Cleansing Protocol**: See `Solarcast_data_cleansing.md`
 
 **Data Cleansing Protocol Base code**:`Data_Cleansing_Single_File.ipynb`
+
+**Data Cleansing ALL code**: See `Data Cleaning` folder for code files
