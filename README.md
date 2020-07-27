@@ -10,3 +10,5 @@ Repo for DKSF Project with Safecast
 **Data Cleansing Protocol Base code**:`Data_Cleansing_Single_File.ipynb`
 
 **Data Cleansing ALL code**: See `Data Cleaning` folder for code files
+
+Ignore the exploration files for now. TO DO: Update the exploration file
