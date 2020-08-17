@@ -80,6 +80,8 @@ target/
 
 # Jupyter Notebook
 .DS_Store
+*.ipynb_checkpoints/
+
 
 # IPython
 profile_default/
