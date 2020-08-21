@@ -63,7 +63,8 @@ def rollingMeanDev(fields, df, window, min_period, numStd):
             line1Lower = hv.Curve((x, lower), label='mean- 3.stdev').opts(width=700, color='blue')
 
             overlay = line1Upper * line1Mean * line1 * line1Lower
-
+            overlay.opts(title="device: "+str(device))
+            
             # return the list of anomalies : records where deviation is >= num_std away from mean
             temp = df[deviceFilter].copy()
             temp['rollingMean'] = rollingMean
