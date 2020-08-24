@@ -1,5 +1,5 @@
-# Repo-specific data files
-*Solarcast-01_Master_Cleaned_Sorted.csv
+# Data files
+*.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
