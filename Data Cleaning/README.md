@@ -23,4 +23,4 @@ These files are linked for usage.
    1. start_yyyymm -- string with format YYYY-MM; earliest month for which data is available (e.g., 2017-09)
    2. end_yyyymm -- string with format YYYY-MM; latest month for which data is available (e.g., 2020-07)
  
- Contact Saksham Gakhar for more details (saksham.gakhar94@gmail.com)
+ Contact Saksham Gakhar for more details (saksham.gakhar94@gmail.com) or Edwin Zhang (edwin.james.zhang@gmail.com)
