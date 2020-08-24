@@ -13,5 +13,14 @@ These files are linked for usage.
    1. an anomaly score for each measurement in the time series, 
    2. which events are anomalous (when anomaly score crosses a threshold)
    3. and finally the time window *start and end time stamps* for when the anomaly is present.
+   
+ ## Python script
+ In case it is easier to run the data cleaning process as a Python script, please use the following command while in this directory:
+ ```
+ python -m data_cleaner 2017-09 2020-07
+ ```
+ The last two arguments in the command are defined as follows:
+   1. start_yyyymm -- string with format YYYY-MM; earliest month for which data is available (e.g., 2017-09)
+   2. end_yyyymm -- string with format YYYY-MM; latest month for which data is available (e.g., 2020-07)
  
  Contact Saksham Gakhar for more details (saksham.gakhar94@gmail.com)
