@@ -28,8 +28,71 @@ def negativeFields(fields, df):
     
     return anomaly_dfs
 
+def PMorderingCheck(df):
+    """
+    Function to check PM1.0<PM2.5<PM10.0 (by definition)
+    If any record violates above definition, report as anomaly
+    
+    args:
+    df: pandas dataframe containing 'device', fields, and 'when_captured'
+    
+    return:
+    anomaly_dfs: pandas dataframe with containing anaomalous records: 4 fields are in the list,
+                ['anomaly_type','device','normalized_severity_score','when_captured']
+    """
+    anomaly_dfs = []
 
-def rollingMedianDev(fields, df, window, min_period, numStd):
+    anomaly_df1 = df[df['pms_pm02_5'] < df['pms_pm01_0']][['when_captured', 'device']]
+    anomaly_df1['anomaly_type'] = np.repeat('pms_pm02_5 < pms_pm01_0', anomaly_df1.shape[0])
+    anomaly_df1['normalized_severity_score'] = 1
+
+    anomaly_df2 = df[df['pms_pm10_0'] < df['pms_pm01_0']][['when_captured', 'device']]
+    anomaly_df2['anomaly_type'] = np.repeat('pms_pm10_0 < pms_pm01_0', anomaly_df2.shape[0])
+    anomaly_df2['normalized_severity_score'] = 1
+
+    anomaly_df3 = df[df['pms_pm10_0'] < df['pms_pm02_5']][['when_captured', 'device']]
+    anomaly_df3['anomaly_type'] = np.repeat('pms_pm10_0 < pms_pm02_5', anomaly_df3.shape[0])
+    anomaly_df3['normalized_severity_score'] = 1
+
+    anomaly_dfs.append(anomaly_df1)
+    anomaly_dfs.append(anomaly_df2)
+    anomaly_dfs.append(anomaly_df3)
+
+    anomaly_dfs = pd.concat(anomaly_dfs, axis = 0)
+    
+    return anomaly_dfs.reset_index(drop=True)
+
+def dataContinuityCheck(df, day_gap = 2, devices = None):
+    """
+    Function to check if two consecutive records for a device differ by more than `day_gap` (double)
+    If there are consec records that differ by > day_gap, report them as anomalies
+    
+    args:
+    df: pandas dataframe containing 'device', fields, and 'when_captured'
+    day_gap(double): maximum allowed gap (in units of days) between two consecutive records for a device
+    devices: List of devices to run the check for. If None, then all devices in dataframe df
+    
+    return:
+    anomaly_dfs: pandas dataframe with containing anaomalous records: 4 fields are in the list,
+                ['anomaly_type','device','normalized_severity_score','when_captured']
+    """
+    anomaly_dfs = []
+    if devices is None:
+        devices = df['device'].unique()
+    gf = df.groupby('device')
+    for device in devices:
+        curr_dev = gf.get_group(device)
+        curr_dev_noNan = curr_dev.dropna()
+        mask = pd.to_datetime(curr_dev_noNan['when_captured']).diff().dt.days >=day_gap
+        anomaly_df = curr_dev_noNan[mask][['when_captured', 'device']]
+        anomaly_df['anomaly_type'] = np.repeat('more than ' + str(day_gap) +  ' days of gap between consecutive valid records (post cleaning)', anomaly_df.shape[0])
+        anomaly_df['normalized_severity_score'] = 1
+        anomaly_dfs.append(anomaly_df)
+    anomaly_dfs = pd.concat(anomaly_dfs, axis = 0).reset_index(drop=True) 
+    
+    return anomaly_dfs
+
+def rollingMedianDev(fields, df, window, min_period, numStd, devices=None):
     """
     Function to filter anomalous records based on `numStd` number of deviations away from rolling Median
     
@@ -39,6 +102,7 @@ def rollingMedianDev(fields, df, window, min_period, numStd):
     window: moving window size for the rolling Median and stddev
     min_period: Minimum number of observations in window required to have a value (otherwise result is NA)
     numStd: tolerance in number of standard deviations away from Median for record to be anomalous
+    devices: List of devices to run the check for. If None, then all devices in dataframe df
     
     return:
     pandas dataframe containing anomalous records: 4 fields are in the list
@@ -47,7 +111,9 @@ def rollingMedianDev(fields, df, window, min_period, numStd):
     """
     anomaly_dfs = []
     overlays = []
-    for device in tqdm(df['device'].unique(), mininterval = 30):
+    if devices is None:
+        devices = df['device'].unique()
+    for device in tqdm(devices, mininterval = 30):
         overlay_batch = []
         for field in fields:
             deviceFilter = df['device'] == device
@@ -83,7 +149,7 @@ def rollingMedianDev(fields, df, window, min_period, numStd):
     
     return anomaly_dfs, overlays
 
-def rollingStdevDev(fields, df, window, min_period, numStd):
+def rollingStdevDev(fields, df, window, min_period, numStd, devices=None):
     """
     Function to filter anomalous records based on `numStd` number of deviations away from rolling stdev
     
@@ -93,6 +159,7 @@ def rollingStdevDev(fields, df, window, min_period, numStd):
     window: moving window size for the rolling stdev and its stddev
     min_period: Minimum number of observations in window required to have a value (otherwise result is NA)
     numStd: tolerance in number of standard deviations away from rolling stdev for record to be anomalous
+    devices: List of devices to run the check for. If None, then all devices in dataframe df
     
     return:
     pandas dataframe containing anomalous records: 4 fields are in the list
@@ -101,7 +168,9 @@ def rollingStdevDev(fields, df, window, min_period, numStd):
     """
     anomaly_dfs = []
     overlays = []
-    for device in tqdm(df['device'].unique(), mininterval = 30):
+    if devices is None:
+        devices = df['device'].unique()
+    for device in tqdm(devices, mininterval = 30):
         overlay_batch = []
         for field in fields:
             deviceFilter = df['device'] == device
@@ -137,7 +206,7 @@ def rollingStdevDev(fields, df, window, min_period, numStd):
     
     return anomaly_dfs, overlays
 
-def nightDayDisparity(fields, df, min_rec, day_start, day_end):
+def nightDayDisparity(fields, df, min_rec, day_start, day_end, devices = None):
     """
     Function to filter anomalous records for nights where the median 
     nighttime field value > median daytime field value for the preceding day
@@ -153,6 +222,7 @@ def nightDayDisparity(fields, df, min_rec, day_start, day_end):
     Note: daytime on a date is defined as the hours between `day_start` and `day_end`
     nighttime on a date is defined as the hours between `day_end` of the current_date and 
     the `day_start` of the next_date (if next date records are available in the records)
+    devices: List of devices to run the check for. If None, then all devices in dataframe df
     
     return:
     pandas dataframe containing anomalous records: 4 fields are in the list
@@ -166,7 +236,10 @@ def nightDayDisparity(fields, df, min_rec, day_start, day_end):
     df['hod'] = pd.to_datetime(df['when_captured']).dt.hour
     df['date'] = pd.to_datetime(df['when_captured']).dt.date
     
-    for device in tqdm(df['device'].unique(), mininterval = 30):
+    if devices is None:
+        devices = df['device'].unique()
+        
+    for device in tqdm(devices, mininterval = 30):
         deviceFilter = df['device'] == device
         overlay_batch = []
         df_dev = gf.get_group(device)
@@ -228,13 +301,13 @@ def nightDayDisparity(fields, df, min_rec, day_start, day_end):
             morng_filter = ~(night_filter)
 
             night = hv.Scatter((pd.to_datetime(df_dev['when_captured'][night_filter]).values,\
-                                              df_dev[field][night_filter]), label='night').opts(width=800)
+                                              df_dev[field][night_filter]), label='night').opts(width=800, ylabel = field)
             morng = hv.Scatter((pd.to_datetime(df_dev['when_captured'][morng_filter]).values,\
-                                                       df_dev[field][morng_filter]), label='day').opts(width=800)
+                                                       df_dev[field][morng_filter]), label='day').opts(width=800, xlabel = 'date')
 
             limit = max(df_dev[field][morng_filter]) # only for illustration purposes -- constant 
             x_anom = pd.to_datetime(temp_df['when_captured']).values
-            anoms = hv.Points((x_anom, np.repeat(limit, len(x_anom))), label='anomalies').opts(width=800, color='black')
+            anoms = hv.Points((x_anom, np.repeat(limit, len(x_anom))), label='day-night anomalies').opts(width=800, color='black')
 
             overlay = morng*night*anoms
             overlay.opts(title="device: "+str(device))
@@ -249,7 +322,8 @@ def nightDayDisparity(fields, df, min_rec, day_start, day_end):
 def anomalyDetector(fields, df, anomaly_types=['negativeFields', 'rollingMedianDev', 'rollingStdevDev'], 
                     rmd_window=None, rmd_min_period=None, rmd_numStd=None,
                     rsd_window=None, rsd_min_period=None, rsd_numStd=None, 
-                    ndd_min_rec = 5, ndd_day_start = 6, ndd_day_end = 18):
+                    ndd_min_rec = 5, ndd_day_start = 6, ndd_day_end = 18, 
+                    day_gap = 2, devices = None):
     """
     Wrapper function to run checks for specific types of anomalies and aggregate the results/plots
     
@@ -263,6 +337,8 @@ def anomalyDetector(fields, df, anomaly_types=['negativeFields', 'rollingMedianD
     ndd_min_rec: minimum nuymber of readings for there to be a defined (non-Nan) daytime or nightime median field value
     ndd_day_start: start hour of the day (like 6 for 0600hrs)
     ndd_day_end: end hour for the day (like 18 for 1800hrs)
+    day_gap(double): maximum allowed gap (in units of days) between two consecutive records for a device
+    devices: List of devices to run the check for. If None, then all devices in dataframe df
     
     return:
     pandas dataframe containing anomalous records: 4 fields are in the list
@@ -274,16 +350,20 @@ def anomalyDetector(fields, df, anomaly_types=['negativeFields', 'rollingMedianD
     
     if 'negativeFields' in anomaly_types:
         anomaly_dfs.append(negativeFields(fields, df))
+    if 'dataContinuityCheck' in anomaly_types:
+        anomaly_dfs.append(dataContinuityCheck(df, day_gap, devices))
+    if 'PMorderingCheck' in anomaly_types:
+        anomaly_dfs.append(PMorderingCheck(df))
     if 'rollingMedianDev' in anomaly_types:
-        anomaly_dfs_rmd, overlays_rmd = rollingMedianDev(fields, df, rmd_window, rmd_min_period, rmd_numStd)
+        anomaly_dfs_rmd, overlays_rmd = rollingMedianDev(fields, df, rmd_window, rmd_min_period, rmd_numStd, devices)
         anomaly_dfs.append(anomaly_dfs_rmd)
         overlays['rollingMedianDev'] = overlays_rmd
     if 'rollingStdevDev' in anomaly_types:
-        anomaly_dfs_rsd, overlays_rsd = rollingStdevDev(fields, df, rsd_window, rsd_min_period, rsd_numStd)
+        anomaly_dfs_rsd, overlays_rsd = rollingStdevDev(fields, df, rsd_window, rsd_min_period, rsd_numStd, devices)
         anomaly_dfs.append(anomaly_dfs_rsd)
         overlays['rollingStdevDev'] = overlays_rsd
     if 'nightDayDisparity' in anomaly_types:
-        anomaly_dfs_ndd, overlays_ndd = nightDayDisparity(fields, df, ndd_min_rec, ndd_day_start, ndd_day_end)
+        anomaly_dfs_ndd, overlays_ndd = nightDayDisparity(fields, df, ndd_min_rec, ndd_day_start, ndd_day_end, devices)
         anomaly_dfs.append(anomaly_dfs_ndd)
         overlays['nightDayDisparity'] = overlays_ndd
     if len(anomaly_dfs) > 1:
