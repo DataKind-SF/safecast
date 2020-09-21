@@ -5,6 +5,7 @@ import holoviews as hv
 import datetime
 hv.extension('bokeh')
 
+import argparse
 
 def negativeFields(fields, df):
     """
@@ -49,7 +50,7 @@ def PMorderingCheck(df):
 
     anomaly_df2 = df[df['pms_pm10_0'] < df['pms_pm01_0']][['when_captured', 'device']]
     anomaly_df2['anomaly_details'] = np.repeat('pms_pm10_0 < pms_pm01_0', anomaly_df2.shape[0])
-    anomaly_df2['everity_score'] = 1
+    anomaly_df2['severity_score'] = 1
 
     anomaly_df3 = df[df['pms_pm10_0'] < df['pms_pm02_5']][['when_captured', 'device']]
     anomaly_df3['anomaly_details'] = np.repeat('pms_pm10_0 < pms_pm02_5', anomaly_df3.shape[0])
@@ -433,3 +434,28 @@ def normalize_scores(df):
                bins=bins_dict[anomaly_detail], labels = [x/10 for x in range(1, 11)])
     
     return df
+
+if __name__ == "__main__": 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--devices', nargs='*',
+                        help='string of devices to check, separated by a space')
+    parser.add_argument('--anomaly_types', nargs='*',
+                        help='string of anomaly types to check, separated by a space')
+    # Example command line input: python anomaly_detector.py --devices 1660294046 3373827677 --anomaly_types negativeFields rollingMedianDev
+    args = parser.parse_args()
+    
+    try:
+        df = pd.read_csv('Solarcast-01_Master_Cleaned_Sorted.csv')
+    except FileNotFoundError:
+        print('Solarcast-01_Master_Cleaned_Sorted.csv not found')
+    
+    if args.anomaly_types is not None:
+        anomaly_dfs, _ = anomalyDetector(['pms_pm10_0', 'pms_pm02_5', 'pms_pm01_0', 'lnd_7318u', 'lnd_7318c'], df,
+                                         anomaly_types=args.anomaly_types, devices=args.devices,
+                                         rmd_window=200, rmd_min_period=50, rmd_numStd=3, rsd_window=200, rsd_min_period=50, rsd_numStd=3)
+    else:
+        anomaly_dfs, _ = anomalyDetector(['pms_pm10_0', 'pms_pm02_5', 'pms_pm01_0', 'lnd_7318u', 'lnd_7318c'], df, devices=args.devices,
+                                         rmd_window=200, rmd_min_period=50, rmd_numStd=3, rsd_window=200, rsd_min_period=50, rsd_numStd=3)
+    
+    anomaly_dfs = normalize_scores(anomaly_dfs)
+    anomaly_dfs.to_csv('Anomalies.csv', index = False)
