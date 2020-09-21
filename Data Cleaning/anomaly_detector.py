@@ -437,7 +437,7 @@ def normalize_scores(df):
 
 if __name__ == "__main__": 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--devices', nargs='+',
+    parser.add_argument('--devices', nargs='*',
                         help='string of devices to check, separated by a space')
     parser.add_argument('--anomaly_types', nargs='*',
                         help='string of anomaly types to check, separated by a space')
