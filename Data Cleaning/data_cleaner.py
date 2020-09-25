@@ -1,11 +1,6 @@
 import numpy as np 
 import pandas as pd
-import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib import cm
-from collections import defaultdict
 import datetime
-
 import argparse
 
 def readCSV(dt):
@@ -154,14 +149,18 @@ def identifyMultivaluedTimeStamps(merged):
 
 def identifyRemainingDupl(merged):
     """
-        NOT Actionable as duplicates were dropped: 
+        Actionable: even though duplicates were dropped, there can still be records for which   (merged.COUNTS >1) & (merged.DISTINCTS==1)
+        : consider the case where one of the records for the key under consideration has meaningful values
+        : but the other record has all NaNs for the same key. Ex. (Oct 18, 2018 @ 10:36:24.000 , 2299238163): row 22618
         Records where all rows are purely duplicates [preserve only 1 later]
         args: incoming datframe with COUNTS and COUNT-DISTINCTS for each key
     """
     bool2 = (merged.COUNTS >1) & (merged.DISTINCTS==1)
     sum2 = bool2.sum()
     print("remaining duplicates check : " ,merged.COUNTS[bool2].sum() - merged.DISTINCTS[bool2].sum())
-    return sum2
+    toDiscard2 = merged.loc[:,['device', 'when_captured']][bool2]
+    toDiscard2.shape
+    return sum2, toDiscard2
 
 def goodTimeStamps(merged):
     """
@@ -182,7 +181,7 @@ def writeDF(dt, dframe, descrpt):
     print("written records shape : ", dframe.shape)
     dframe.to_csv(str(dt) + '-01_' + str(descrpt) + '.csv')
     
-def filterRows(toDiscard1, toDiscard3, df):
+def filterRows(toDiscard1, toDiscard2, toDiscard3, df):
     """
         Inplace discarding of rows based on allNaN record keys (in df : toDiscard1)
         and rows based on MultivaluedTimeStamps keys (in df : toDiscard3)
@@ -194,7 +193,11 @@ def filterRows(toDiscard1, toDiscard3, df):
     """
     # STEP 1 : 
     # all tuples of keys to be discarded
+<<<<<<< HEAD
     discard = pd.concat([toDiscard1, toDiscard3], ignore_index=True)
+=======
+    discard = pd.concat([toDiscard1, toDiscard2, toDiscard3], ignore_index=True)
+>>>>>>> data_cleaning_script
     discard['KEY_Dev_WhenCapt'] = list(zip(discard.device, discard.when_captured))
     print(df.shape, discard.shape)
 
@@ -216,7 +219,11 @@ def filterRows(toDiscard1, toDiscard3, df):
 
 def cleanSolarCastData(dt):
     """
+<<<<<<< HEAD
         Function to clean all the data with the helper functions above
+=======
+        Master Function to clean all the data with the helper functions in `Data_Cleansing_Single_file`
+>>>>>>> data_cleaning_script
         arg: dt: The function returns the cleaned data frame for the YYYY-MM corresponding to "dt"
         return : df: cleaned dataframe
     """
@@ -242,9 +249,10 @@ def cleanSolarCastData(dt):
 
     sum1, toDiscard1 = identifyALLNanRecs(merged)
     sum3, toDiscard3 = identifyMultivaluedTimeStamps(merged)
-    sum2 = identifyRemainingDupl(merged)
+    sum2, toDiscard2 = identifyRemainingDupl(merged)
     sum4 = goodTimeStamps(merged)
     print("toDiscard1 shape: ",toDiscard1.shape)
+    print("toDiscard2 shape: ",toDiscard2.shape)
     print("toDiscard3 shape: ",toDiscard3.shape)
 
     # sanityCheck(): ensure you have all records covered by 1 of the 4 conditions
@@ -252,7 +260,7 @@ def cleanSolarCastData(dt):
 
     writeDF(dt, toDiscard3, 'MultivaluedTimeStamps')
 
-    df = filterRows(toDiscard1, toDiscard3, df)
+    df = filterRows(toDiscard1, toDiscard2, toDiscard3, df)
     print("final df shape: ", df.shape)
 
     ### Now check to make sure no garbage data is left
