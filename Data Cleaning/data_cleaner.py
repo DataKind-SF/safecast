@@ -53,7 +53,7 @@ def rmInvalidTimeStamps(df):
     df = df[df['when_captured'].notna()]
     print("df shape after remove records with NULL `when_captured` : ",df.shape)
 
-    ## remove records where `when_captured` is invalid
+    ## remove records where `when_captured` is an invalid
     boolean_condition = df['when_captured'] >  pd.to_datetime(2000/1/19, infer_datetime_format=True).tz_localize('UTC')
     print("Valid `when_captured`  entires: ", boolean_condition.sum())
     df = df[df['when_captured'] >  pd.to_datetime(2000/1/19, infer_datetime_format=True).tz_localize('UTC')]
@@ -193,11 +193,7 @@ def filterRows(toDiscard1, toDiscard2, toDiscard3, df):
     """
     # STEP 1 : 
     # all tuples of keys to be discarded
-<<<<<<< HEAD
-    discard = pd.concat([toDiscard1, toDiscard3], ignore_index=True)
-=======
     discard = pd.concat([toDiscard1, toDiscard2, toDiscard3], ignore_index=True)
->>>>>>> data_cleaning_script
     discard['KEY_Dev_WhenCapt'] = list(zip(discard.device, discard.when_captured))
     print(df.shape, discard.shape)
 
@@ -219,11 +215,7 @@ def filterRows(toDiscard1, toDiscard2, toDiscard3, df):
 
 def cleanSolarCastData(dt):
     """
-<<<<<<< HEAD
-        Function to clean all the data with the helper functions above
-=======
         Master Function to clean all the data with the helper functions in `Data_Cleansing_Single_file`
->>>>>>> data_cleaning_script
         arg: dt: The function returns the cleaned data frame for the YYYY-MM corresponding to "dt"
         return : df: cleaned dataframe
     """
