@@ -1,11 +1,6 @@
 import numpy as np 
 import pandas as pd
-import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib import cm
-from collections import defaultdict
 import datetime
-
 import argparse
 
 def readCSV(dt):
@@ -36,7 +31,7 @@ def readCSV(dt):
 
 def findBadData(df):
     
-    temp_df = df.groupby(['device_urn', 'device_sn','when_captured']).size().to_frame('size').\
+    temp_df = df.groupby(['device','when_captured']).size().to_frame('size').\
                                     reset_index().sort_values('size', ascending=False)
     print("bad device data counts: ")
     badRecords = temp_df[(temp_df['size']>1)]
@@ -44,7 +39,7 @@ def findBadData(df):
     
     print("all bad device list: ")
     # Devices that have misbehaved at some point - more than one data values per time stamp
-    print(np.unique(temp_df[temp_df['size']>1]['device_sn'].values)) # devices that have misbehaved
+    print(np.unique(temp_df[temp_df['size']>1]['device'].values)) # devices that have misbehaved
     
     return badRecords
 
@@ -103,13 +98,13 @@ def rmDuplicates(df):
     
 def dataAggWithKey(df):
     """
-    Aggregate the df based on key: 'device_sn','when_captured'
+    Aggregate the df based on key: 'device','when_captured'
     arg: df - incoming dataframe
     return: datframe with COUNTS and COUNT-DISTINCTS for each key
     """
     # STEP 1: Aggregate the dataframe based on key
     
-    temp_df = df.groupby(['device_sn','when_captured']).agg(['count','nunique'])
+    temp_df = df.groupby(['device','when_captured']).agg(['count','nunique'])
     # temp_df.info()
     num_groups = temp_df.shape[0]
     print("num_groups  is : ", num_groups)
@@ -121,47 +116,51 @@ def dataAggWithKey(df):
     tmp_df1 = temp_df.iloc[:,even].max(axis=1).to_frame('COUNTS').reset_index()
     tmp_df2 = temp_df.iloc[:,odd].max(axis=1).to_frame('DISTINCTS').reset_index()
     print(tmp_df1.shape, tmp_df2.shape)
-    merged = pd.merge(tmp_df1, tmp_df2, left_on = ['device_sn', 'when_captured'], \
-                      right_on=['device_sn', 'when_captured'])
+    merged = pd.merge(tmp_df1, tmp_df2, left_on = ['device', 'when_captured'], \
+                      right_on=['device', 'when_captured'])
     return merged, num_groups
 
 def identifyALLNanRecs(merged):
     """
         Actionable: Records of useless data with all NaNs
         args: incoming datframe with COUNTS and COUNT-DISTINCTS for each key
-        return : keys dataframe ('device_sn', 'when_captured') to remove later
+        return : keys dataframe ('device', 'when_captured') to remove later
     """
     bool1 = (merged.COUNTS >1) & (merged.DISTINCTS==0)
     sum1 = bool1.sum()
     print(sum1)
-    toDiscard1 = merged.loc[:,['device_sn', 'when_captured']][bool1]
+    toDiscard1 = merged.loc[:,['device', 'when_captured']][bool1]
     toDiscard1.shape
     return sum1, toDiscard1
 
 def identifyMultivaluedTimeStamps(merged):
     """
         Actionable: Records that are a mix of duplicates and non-duplicate rows 
-        for a given (`device_sn`, `when_captured`) [must be all discarded]
+        for a given (`device`, `when_captured`) [must be all discarded]
         args: incoming datframe with COUNTS and COUNT-DISTINCTS for each key
-        return : keys dataframe ('device_sn', 'when_captured') to remove later
+        return : keys dataframe ('device', 'when_captured') to remove later
     """
     bool3 = (merged.COUNTS >1) & (merged.DISTINCTS>1)
     sum3 = bool3.sum()
     print(sum3)
-    toDiscard3 = merged.loc[:,['device_sn', 'when_captured']][bool3]
+    toDiscard3 = merged.loc[:,['device', 'when_captured']][bool3]
     toDiscard3.shape
     return sum3, toDiscard3
 
 def identifyRemainingDupl(merged):
     """
-        NOT Actionable as duplicates were dropped: 
+        Actionable: even though duplicates were dropped, there can still be records for which   (merged.COUNTS >1) & (merged.DISTINCTS==1)
+        : consider the case where one of the records for the key under consideration has meaningful values
+        : but the other record has all NaNs for the same key. Ex. (Oct 18, 2018 @ 10:36:24.000 , 2299238163): row 22618
         Records where all rows are purely duplicates [preserve only 1 later]
         args: incoming datframe with COUNTS and COUNT-DISTINCTS for each key
     """
     bool2 = (merged.COUNTS >1) & (merged.DISTINCTS==1)
     sum2 = bool2.sum()
     print("remaining duplicates check : " ,merged.COUNTS[bool2].sum() - merged.DISTINCTS[bool2].sum())
-    return sum2
+    toDiscard2 = merged.loc[:,['device', 'when_captured']][bool2]
+    toDiscard2.shape
+    return sum2, toDiscard2
 
 def goodTimeStamps(merged):
     """
@@ -182,7 +181,7 @@ def writeDF(dt, dframe, descrpt):
     print("written records shape : ", dframe.shape)
     dframe.to_csv(str(dt) + '-01_' + str(descrpt) + '.csv')
     
-def filterRows(toDiscard1, toDiscard3, df):
+def filterRows(toDiscard1, toDiscard2, toDiscard3, df):
     """
         Inplace discarding of rows based on allNaN record keys (in df : toDiscard1)
         and rows based on MultivaluedTimeStamps keys (in df : toDiscard3)
@@ -194,18 +193,18 @@ def filterRows(toDiscard1, toDiscard3, df):
     """
     # STEP 1 : 
     # all tuples of keys to be discarded
-    discard = pd.concat([toDiscard1, toDiscard3], ignore_index=True)
-    discard['KEY_DevSN_WhenCapt'] = list(zip(discard.device_sn, discard.when_captured))
+    discard = pd.concat([toDiscard1, toDiscard2, toDiscard3], ignore_index=True)
+    discard['KEY_Dev_WhenCapt'] = list(zip(discard.device, discard.when_captured))
     print(df.shape, discard.shape)
 
     # STEP 2 :
     # tuples of all keys in the dataframe
-    df['KEY_DevSN_WhenCapt'] = list(zip(df.device_sn, df.when_captured))
+    df['KEY_Dev_WhenCapt'] = list(zip(df.device, df.when_captured))
     df.shape
 
     # STEP 3 : 
     # discard the rows
-    rows_to_discard = df['KEY_DevSN_WhenCapt'].isin(discard['KEY_DevSN_WhenCapt'])
+    rows_to_discard = df['KEY_Dev_WhenCapt'].isin(discard['KEY_Dev_WhenCapt'])
     print("these many rows to discard: ", rows_to_discard.sum())
 
     incoming = df.shape[0]
@@ -216,7 +215,7 @@ def filterRows(toDiscard1, toDiscard3, df):
 
 def cleanSolarCastData(dt):
     """
-        Function to clean all the data with the helper functions in `Data_Cleansing_Single_file`
+        Master Function to clean all the data with the helper functions in `Data_Cleansing_Single_file`
         arg: dt: The function returns the cleaned data frame for the YYYY-MM corresponding to "dt"
         return : df: cleaned dataframe
     """
@@ -242,9 +241,10 @@ def cleanSolarCastData(dt):
 
     sum1, toDiscard1 = identifyALLNanRecs(merged)
     sum3, toDiscard3 = identifyMultivaluedTimeStamps(merged)
-    sum2 = identifyRemainingDupl(merged)
+    sum2, toDiscard2 = identifyRemainingDupl(merged)
     sum4 = goodTimeStamps(merged)
     print("toDiscard1 shape: ",toDiscard1.shape)
+    print("toDiscard2 shape: ",toDiscard2.shape)
     print("toDiscard3 shape: ",toDiscard3.shape)
 
     # sanityCheck(): ensure you have all records covered by 1 of the 4 conditions
@@ -252,7 +252,7 @@ def cleanSolarCastData(dt):
 
     writeDF(dt, toDiscard3, 'MultivaluedTimeStamps')
 
-    df = filterRows(toDiscard1, toDiscard3, df)
+    df = filterRows(toDiscard1, toDiscard2, toDiscard3, df)
     print("final df shape: ", df.shape)
 
     ### Now check to make sure no garbage data is left
@@ -272,7 +272,7 @@ def cleanAndWriteDF(dt):
     print(df.shape)
 
     # Check how many devices there are in the dataset
-    devices = np.unique(df.device_sn.values)
+    devices = np.unique(df.device.values)
     print(len(devices))
     print(devices)
 
