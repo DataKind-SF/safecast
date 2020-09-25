@@ -17,7 +17,7 @@ These files are linked for usage.
  ## Python script
  In case it is easier to run the data cleaning process as a Python script, please use the following command while in this directory:
  ```
- python -m data_cleaner 2017-09 2020-07
+ python3 -m data_cleaner 2017-09 2020-07
  ```
  The last two arguments in the command are defined as follows:
    1. start_yyyymm -- string with format YYYY-MM; earliest month for which data is available (e.g., 2017-09)
