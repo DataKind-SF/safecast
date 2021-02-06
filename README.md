@@ -1,7 +1,7 @@
 # Safecast
 Repo for DKSF Project with Safecast
 
-- **Data Ambassadors**: Saksham Gakhar (saksham.gakhar94@gmail.com) & Edwin Zhang (edwin.james.zhang@gmail.com)
+- **Data Ambassadors**: Edwin Zhang (edwin.james.zhang@gmail.com) & others
 
 - **Data Exploration**: First analyzed the Solarcast data. For information about data source and known issues with data, see the file: `exploration_notebooks/Issues_with_SolarcastDevice_data.md`. We’ve accommodated these known data discrepancies through our cleaning protocol (next bullet).
 
